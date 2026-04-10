@@ -47,7 +47,20 @@
       "Bash(cmd /c \"dir C:\\\\Users\\\\gille\\\\OneDrive\\\\Bureau\\\\bot\\\\docs\")",
       "Bash(python -m pytest tests/test_strate_0.py -v)",
       "Bash(python -m pytest tests/test_strate_1.py -v)",
-      "Bash(python -m pytest tests/test_strate_0.py tests/test_strate_1.py -v --tb=no -q)"
+      "Bash(python -m pytest tests/test_strate_0.py tests/test_strate_1.py -v --tb=no -q)",
+      "Bash(npx skills:*)",
+      "Bash(npx ruflo@latest:*)",
+      "Bash(claude-flow init:*)",
+      "Bash(python -m pytest tests/test_strate_3.py -v)",
+      "Bash(python -m pytest tests/test_strate_4.py -v)",
+      "Bash(python -m pytest trading_bot/tests/test_strate_3.py trading_bot/tests/test_strate_4.py -v --tb=short)",
+      "Bash(ls -la trading_bot/vault/*.db trading_bot/vault/world_model/)",
+      "Bash(python -c \"from trading_bot.core.learning_engine import LearningEngine; print\\('Import OK'\\)\")",
+      "Bash(python -c \"import sys; sys.path.insert\\(0, 'trading_bot'\\); from core.learning_engine import LearningEngine; print\\('Import OK'\\)\")"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "claude-flow"
+  ]
 }
