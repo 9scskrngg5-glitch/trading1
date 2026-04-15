@@ -376,3 +376,185 @@ class CapitalScreen(ApiScreen):
             write_env(self.app.config_values)
             self.notify("✅ .env sauvegardé", severity="information", timeout=2)
             self.app.push_screen("bugscan")
+
+
+# ── BugScanScreen ──────────────────────────────────────────────────────────
+
+CRITICAL_DEPS = [
+    "ccxt", "pandas", "numpy", "textual", "rich",
+    "anthropic", "xgboost", "ta", "httpx", "dotenv",
+    "telegram", "websockets", "sklearn", "langchain",
+]
+
+ORACLE_MODULES: list[tuple[str, str]] = [
+    ("config",                "Config"),
+    ("brain.brainstem",       "Brainstem"),
+    ("brain.safety_kernel",   "SafetyKernel"),
+    ("brain.parliament",      "Parliament"),
+    ("brain.working_memory",  "WorkingMemory"),
+    ("brain.narrator",        "Narrator"),
+    ("strates.amd_strate",    "AMD Strate"),
+    ("strates.momentum_strate","Momentum"),
+    ("strates.legacy_bridge", "LegacyBridge"),
+    ("telegram.alert_queue",  "AlertQueue"),
+    ("execution_engine",      "ExecutionEngine"),
+]
+
+LEGACY_MODULES = [
+    "trading_bot.core.strate_0_epistemic",
+    "trading_bot.core.strate_2_minsky",
+    "trading_bot.core.strate_4_reflexivity",
+    "trading_bot.core.strate_5_behavioral_bias",
+    "trading_bot.core.strate_7_fractal_risk",
+]
+
+
+class BugScanScreen(Screen):
+    """Scan complet en streaming : deps → imports → pytest → API pings."""
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=False)
+        with Container(classes="wizard-screen"):
+            with Vertical(classes="wizard-box"):
+                yield Static("DIAGNOSTIC COMPLET", classes="wizard-title")
+                yield Static("Scan en cours…", id="scan-status", classes="wizard-desc")
+                yield Log(id="scan-log", classes="scan-log", auto_scroll=True)
+                yield Static("", id="scan-summary", classes="scan-summary")
+                with Horizontal(classes="btn-row"):
+                    yield Button(
+                        "Voir le résumé →", id="btn-summary",
+                        classes="primary", disabled=True,
+                    )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.run_scan()
+
+    @work(exclusive=True)
+    async def run_scan(self) -> None:
+        log = self.query_one("#scan-log", Log)
+        passes = 0
+        fails = 0
+
+        async for label, ok, detail in self._all_checks():
+            icon = "[green]✅[/]" if ok else "[red]❌[/]"
+            suffix = f"  [dim]{detail}[/]" if detail else ""
+            log.write_markup(f"{icon}  {label}{suffix}")
+            if ok:
+                passes += 1
+            else:
+                fails += 1
+
+        color = "green" if fails == 0 else ("yellow" if fails <= 3 else "red")
+        self.query_one("#scan-status", Static).update(
+            f"[bold {color}]Scan terminé[/]"
+        )
+        self.query_one("#scan-summary", Static).update(
+            f"[green]{passes} passés[/]  ·  [red]{fails} échoués[/]  "
+            f"·  {passes + fails} checks au total"
+        )
+        self.app.scan_passes = passes
+        self.app.scan_fails = fails
+        self.query_one("#btn-summary", Button).disabled = False
+
+    async def _all_checks(self) -> AsyncIterator[tuple[str, bool, str]]:
+        """Yields (label, ok, detail) for every diagnostic check."""
+
+        # ── 1. Python version ─────────────────────────────────────────────
+        vi = sys.version_info
+        ok = vi >= (3, 10)
+        yield "Python >= 3.10", ok, f"{vi.major}.{vi.minor}.{vi.micro}"
+
+        # ── 2. Pip dependencies ───────────────────────────────────────────
+        for pkg in CRITICAL_DEPS:
+            try:
+                importlib.import_module(pkg)
+                yield f"dep: {pkg}", True, "OK"
+            except ImportError as e:
+                yield f"dep: {pkg}", False, str(e)[:55]
+
+        # ── 3. oracle_v2 modules ──────────────────────────────────────────
+        for mod, name in ORACLE_MODULES:
+            try:
+                importlib.import_module(mod)
+                yield f"oracle_v2 · {name}", True, "OK"
+            except Exception as e:
+                yield f"oracle_v2 · {name}", False, str(e)[:55]
+
+        # ── 4. trading_bot legacy strates ─────────────────────────────────
+        repo_root = str(ORACLE_DIR.parent)
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        for mod in LEGACY_MODULES:
+            strate_name = mod.split(".")[-1]
+            try:
+                importlib.import_module(mod)
+                yield f"legacy · {strate_name}", True, "OK"
+            except Exception as e:
+                yield f"legacy · {strate_name}", False, str(e)[:55]
+
+        # ── 5. pytest ─────────────────────────────────────────────────────
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pytest", "tests/", "--tb=line", "-q", "--no-header"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(ORACLE_DIR),
+            )
+            ok = result.returncode == 0
+            output = (result.stdout + result.stderr).strip()
+            last = output.split("\n")[-1] if output else "(no output)"
+            yield "pytest oracle_v2/tests/", ok, last[:60]
+        except subprocess.TimeoutExpired:
+            yield "pytest oracle_v2/tests/", False, "timeout >120s"
+        except Exception as e:
+            yield "pytest oracle_v2/tests/", False, str(e)[:55]
+
+        # ── 6. Binance public ping (no auth) ──────────────────────────────
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get("https://api.binance.com/api/v3/ping")
+            yield "Binance API ping", r.status_code == 200, f"HTTP {r.status_code}"
+        except Exception as e:
+            yield "Binance API ping", False, str(e)[:55]
+
+        # ── 7. Telegram getMe (only if token configured) ──────────────────
+        token = (
+            self.app.config_values.get("TELEGRAM_TOKEN")
+            or os.getenv("TELEGRAM_TOKEN", "")
+        )
+        if token:
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    r = await client.get(
+                        f"https://api.telegram.org/bot{token}/getMe"
+                    )
+                data = r.json()
+                ok = data.get("ok", False)
+                username = data.get("result", {}).get("username", "?")
+                yield "Telegram getMe", ok, (
+                    f"@{username}" if ok else r.text[:40]
+                )
+            except Exception as e:
+                yield "Telegram getMe", False, str(e)[:55]
+
+        # ── 8. Anthropic API (only if key configured) ─────────────────────
+        api_key = (
+            self.app.config_values.get("ANTHROPIC_API_KEY")
+            or os.getenv("ANTHROPIC_API_KEY", "")
+        )
+        if api_key:
+            try:
+                import anthropic
+                client = anthropic.Anthropic(api_key=api_key)
+                models = client.models.list()
+                yield "Anthropic API", True, f"{len(models.data)} models disponibles"
+            except Exception as e:
+                yield "Anthropic API", False, str(e)[:55]
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-summary":
+            self.app.push_screen("summary")
