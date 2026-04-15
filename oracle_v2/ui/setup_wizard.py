@@ -4,6 +4,7 @@ Wizard Textual 8 écrans : Welcome → 5 APIs → BugScan → Summary
 Lance via : python -m ui.setup_wizard  (depuis oracle_v2/)
 """
 from __future__ import annotations
+import asyncio
 import importlib
 import os
 import subprocess
@@ -159,7 +160,7 @@ def write_env(new_values: dict[str, str]) -> None:
 
     for entry in ordered:
         if entry.startswith("\x00key\x00"):
-            key = entry[6:]
+            key = entry[5:]
             if key in new_values:
                 output.append(f"{key}={new_values[key]}")
                 inserted.add(key)
@@ -464,22 +465,27 @@ class BugScanScreen(Screen):
         vi = sys.version_info
         ok = vi >= (3, 10)
         yield "Python >= 3.10", ok, f"{vi.major}.{vi.minor}.{vi.micro}"
+        await asyncio.sleep(0)
 
         # ── 2. Pip dependencies ───────────────────────────────────────────
         for pkg in CRITICAL_DEPS:
             try:
                 importlib.import_module(pkg)
                 yield f"dep: {pkg}", True, "OK"
+                await asyncio.sleep(0)
             except ImportError as e:
                 yield f"dep: {pkg}", False, str(e)[:55]
+                await asyncio.sleep(0)
 
         # ── 3. oracle_v2 modules ──────────────────────────────────────────
         for mod, name in ORACLE_MODULES:
             try:
                 importlib.import_module(mod)
                 yield f"oracle_v2 · {name}", True, "OK"
+                await asyncio.sleep(0)
             except Exception as e:
                 yield f"oracle_v2 · {name}", False, str(e)[:55]
+                await asyncio.sleep(0)
 
         # ── 4. trading_bot legacy strates ─────────────────────────────────
         repo_root = str(ORACLE_DIR.parent)
@@ -490,8 +496,10 @@ class BugScanScreen(Screen):
             try:
                 importlib.import_module(mod)
                 yield f"legacy · {strate_name}", True, "OK"
+                await asyncio.sleep(0)
             except Exception as e:
                 yield f"legacy · {strate_name}", False, str(e)[:55]
+                await asyncio.sleep(0)
 
         # ── 5. pytest ─────────────────────────────────────────────────────
         try:
@@ -506,10 +514,13 @@ class BugScanScreen(Screen):
             output = (result.stdout + result.stderr).strip()
             last = output.split("\n")[-1] if output else "(no output)"
             yield "pytest oracle_v2/tests/", ok, last[:60]
+            await asyncio.sleep(0)
         except subprocess.TimeoutExpired:
             yield "pytest oracle_v2/tests/", False, "timeout >120s"
+            await asyncio.sleep(0)
         except Exception as e:
             yield "pytest oracle_v2/tests/", False, str(e)[:55]
+            await asyncio.sleep(0)
 
         # ── 6. Binance public ping (no auth) ──────────────────────────────
         try:
@@ -517,8 +528,10 @@ class BugScanScreen(Screen):
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get("https://api.binance.com/api/v3/ping")
             yield "Binance API ping", r.status_code == 200, f"HTTP {r.status_code}"
+            await asyncio.sleep(0)
         except Exception as e:
             yield "Binance API ping", False, str(e)[:55]
+            await asyncio.sleep(0)
 
         # ── 7. Telegram getMe (only if token configured) ──────────────────
         token = (
@@ -538,8 +551,10 @@ class BugScanScreen(Screen):
                 yield "Telegram getMe", ok, (
                     f"@{username}" if ok else r.text[:40]
                 )
+                await asyncio.sleep(0)
             except Exception as e:
                 yield "Telegram getMe", False, str(e)[:55]
+                await asyncio.sleep(0)
 
         # ── 8. Anthropic API (only if key configured) ─────────────────────
         api_key = (
@@ -552,8 +567,10 @@ class BugScanScreen(Screen):
                 client = anthropic.Anthropic(api_key=api_key)
                 models = client.models.list()
                 yield "Anthropic API", True, f"{len(models.data)} models disponibles"
+                await asyncio.sleep(0)
             except Exception as e:
                 yield "Anthropic API", False, str(e)[:55]
+                await asyncio.sleep(0)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-summary":
@@ -611,7 +628,7 @@ class SummaryScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-rescan":
-            self.app.push_screen("bugscan")
+            self.app.switch_screen("bugscan")
         elif event.button.id == "btn-launch":
             self.app.exit(0)
 
