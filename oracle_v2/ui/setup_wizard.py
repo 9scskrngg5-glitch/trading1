@@ -558,3 +558,113 @@ class BugScanScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-summary":
             self.app.push_screen("summary")
+
+
+# ── SummaryScreen ──────────────────────────────────────────────────────────
+
+class SummaryScreen(Screen):
+    """Résumé final : config sauvegardée + résultats scan + lancement."""
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=False)
+        with Container(classes="wizard-screen"):
+            with Vertical(classes="wizard-box"):
+                yield Static("RÉSUMÉ", classes="wizard-title")
+
+                yield Static(
+                    "[bold #4a9eff]Configuration sauvegardée dans .env[/]",
+                    classes="wizard-desc",
+                )
+                yield Static("", id="config-recap")
+
+                yield Static("", id="scan-recap", classes="scan-summary")
+
+                with Horizontal(classes="btn-row"):
+                    yield Button("↩ Refaire le scan", id="btn-rescan", classes="skip")
+                    yield Button("🚀  Lancer ORACLE v2", id="btn-launch", classes="launch")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        # Config recap — mask secrets
+        values = self.app.config_values
+        lines: list[str] = []
+        for key, val in values.items():
+            if val:
+                if len(val) > 8:
+                    display = val[:4] + "·" * 4 + val[-2:]
+                else:
+                    display = "·" * len(val)
+                lines.append(f"  [cyan]{key}[/] = {display}")
+        recap = self.query_one("#config-recap", Static)
+        recap.update("\n".join(lines) if lines else "  [dim]Aucune valeur saisie[/]")
+
+        # Scan recap
+        passes = getattr(self.app, "scan_passes", 0)
+        fails = getattr(self.app, "scan_fails", 0)
+        color = "green" if fails == 0 else ("yellow" if fails <= 3 else "red")
+        msg = "✅ Tous les checks sont passés." if fails == 0 else (
+            f"⚠️  {fails} erreur(s) détectée(s) — consulte le scan pour les détails."
+        )
+        self.query_one("#scan-recap", Static).update(
+            f"[bold {color}]Diagnostic : {passes} ✅  {fails} ❌[/]\n[dim]{msg}[/]"
+        )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-rescan":
+            self.app.push_screen("bugscan")
+        elif event.button.id == "btn-launch":
+            self.app.exit(0)
+
+
+# ── SetupWizard App ────────────────────────────────────────────────────────
+
+class SetupWizard(App):
+    """Application Textual principale du wizard de configuration."""
+
+    CSS = WIZARD_CSS
+    TITLE = "ORACLE v2 — Setup Wizard"
+    BINDINGS = [
+        Binding("q", "quit", "Quitter"),
+        Binding("ctrl+c", "quit", "Quitter"),
+    ]
+
+    SCREENS = {
+        "welcome":   WelcomeScreen,
+        "binance":   BinanceScreen,
+        "telegram":  TelegramScreen,
+        "anthropic": AnthropicScreen,
+        "twitter":   TwitterScreen,
+        "capital":   CapitalScreen,
+        "bugscan":   BugScanScreen,
+        "summary":   SummaryScreen,
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.config_values: dict[str, str] = {}
+        self.scan_passes: int = 0
+        self.scan_fails: int = 0
+
+    def on_mount(self) -> None:
+        self.push_screen("welcome")
+
+    def action_quit(self) -> None:
+        self.exit(0)
+
+
+# ── Entry point ────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    # Pre-load existing .env so read_env() and os.getenv() both see old values
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ENV_PATH)
+    except ImportError:
+        pass
+
+    SetupWizard().run()
+
+    print(
+        "\n[ORACLE v2] Setup terminé.\n"
+        "Lance le bot : python main.py --mode paper\n"
+    )
