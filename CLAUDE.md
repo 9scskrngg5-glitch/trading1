@@ -1,4 +1,25 @@
-# Claude Code Configuration - RuFlo V3
+# Claude Code Configuration - RuFlo V3 + ORACLE Trading
+
+## Intégrations Actives
+
+| Repo | Rôle | Module |
+|------|------|--------|
+| [hermes-agent](https://github.com/NousResearch/hermes-agent) | OpenRouter LLM + MoA + Hooks lifecycle | `oracle_v2/integrations/hermes_client.py` |
+| [multica-ai](https://github.com/multica-ai/multica) | Issue tracker pour décisions trading | `oracle_v2/integrations/multica_tracker.py` |
+
+### Variables d'environnement requises
+```
+OPENROUTER_API_KEY=sk-or-v1-...   # hermes-agent OpenRouter (gratuit avec modèles free)
+ANTHROPIC_API_KEY=...             # Claude Haiku narration (optionnel)
+BINANCE_API_KEY / BINANCE_SECRET  # Trading Binance
+TELEGRAM_TOKEN / TELEGRAM_CHAT_ID # Alertes Telegram
+```
+
+### Chaîne LLM du Narrator (ordre de priorité)
+1. Free-GPT4 local → localhost:5500 (gratuit, sans clé)
+2. **OpenRouter** via hermes-agent (OPENROUTER_API_KEY, modèles gratuits dispo)
+3. Claude Haiku (ANTHROPIC_API_KEY)
+4. Template fallback (toujours dispo)
 
 ## Behavioral Rules (Always Enforced)
 

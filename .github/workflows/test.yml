@@ -1,0 +1,72 @@
+name: ORACLE v2 — CI/CD
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Tests & Qualité code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: |
+          ruff check oracle_v2/ --output-format=github
+          ruff format --check oracle_v2/
+
+      - name: Type check (mypy)
+        run: |
+          mypy oracle_v2/ --ignore-missing-imports --no-error-summary
+        continue-on-error: false
+
+      - name: Tests unitaires (pytest + coverage)
+        run: |
+          pytest oracle_v2/tests/ \
+            --cov=oracle_v2 \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=60 \
+            -v
+        env:
+          ORACLE_MODE: paper
+          BINANCE_TESTNET: "true"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.11'
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
+
+  security:
+    name: Sécurité (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install bandit
+      - run: |
+          bandit -r oracle_v2/ \
+            --exclude oracle_v2/tests,oracle_v2/vault \
+            -ll -ii

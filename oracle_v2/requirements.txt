@@ -1,0 +1,52 @@
+# Core trading
+ccxt>=4.2.0
+pandas>=2.0.0
+numpy>=1.24.0
+xgboost>=2.0.0
+scikit-learn>=1.3.0
+shap>=0.44.0
+
+# Async HTTP
+httpx>=0.27.0
+aiohttp>=3.9.0
+websockets>=12.0
+
+# Telegram
+python-telegram-bot>=21.0.0
+
+# Terminal UI
+textual>=0.61.0
+rich>=13.7.0
+
+# Claude API — narration enrichie
+anthropic>=0.40.0
+
+# LangGraph (ORACLE v2 agents)
+langgraph>=0.1.0
+langchain>=0.2.0
+langchain-anthropic>=0.1.0
+
+# Data / TA
+ta>=0.11.0
+pandas-ta>=0.3.14b0
+
+# Utils
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+loguru>=0.7.0
+
+# ── hermes-agent (NousResearch) integration ──────────────────────────────────
+# OpenRouter LLM client (Mixture-of-Agents narration)
+openai>=2.21.0,<3              # OpenAI-compatible client → OpenRouter
+tenacity>=9.1.4,<10           # Retry logic
+jinja2>=3.1.5,<4              # Template rendering
+pyyaml>=6.0.2,<7              # Hook YAML config
+
+# ── twitter / x sentiment ────────────────────────────────────────────────────
+# X API v2 — signal de sentiment BTC en temps réel
+# Plan Free : 500k tweets/mois suffit pour polling toutes les 5 min
+# Plan Basic (100$/mois) : streaming temps réel disponible
+tweepy>=4.14.0                 # X API v2 AsyncClient + OAuth2 Bearer
+
+# ── multica-ai integration ────────────────────────────────────────────────────
+# No extra deps needed — MulticaTracker uses stdlib only

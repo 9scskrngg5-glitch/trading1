@@ -396,7 +396,7 @@ ORACLE_MODULES: list[tuple[str, str]] = [
     ("brain.narrator",        "Narrator"),
     ("strates.amd_strate",    "AMD Strate"),
     ("strates.momentum_strate","Momentum"),
-    ("strates.legacy_bridge", "LegacyBridge"),
+    ("strates.cognitive_strates", "CognitiveStrates"),
     ("telegram.alert_queue",  "AlertQueue"),
     ("execution_engine",      "ExecutionEngine"),
 ]

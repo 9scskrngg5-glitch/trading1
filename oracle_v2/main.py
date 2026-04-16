@@ -255,12 +255,12 @@ Exemples:
         return
 
     # ─── MODE BTC LATENCY ARB ─────────────────────────────────────────
-    if getattr(args, "btc_arb", False):
+    if args.btc_arb:
         asyncio.run(run_btc_latency_scan())
         return
 
     # ─── MODE CHAT ────────────────────────────────────────────────────
-    if getattr(args, "chat", False):
+    if args.chat:
         asyncio.run(run_chat())
         return
 

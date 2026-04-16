@@ -1,0 +1,140 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "oracle-v2"
+version = "2.1.0"
+description = "ORACLE v2 — Neural Trading System"
+requires-python = ">=3.11"
+dependencies = [
+    "ccxt>=4.0",
+    "python-dotenv>=1.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "anthropic>=0.25",
+    "aiohttp>=3.9",
+    "rich>=13.0",
+    "textual>=0.50",
+    "python-telegram-bot>=20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "mypy>=1.8",
+    "ruff>=0.3",
+]
+
+# ─── ML — couche feature engineering + modèles ───────────────────────────────
+ml = [
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pandas>=2.1",
+    "scikit-learn>=1.4",
+    "xgboost>=2.0",
+    "hmmlearn>=0.3",
+    "torch>=2.2",
+    "shap>=0.44",
+    "optuna>=3.5",
+    "yfinance>=0.2",
+    "pyarrow>=15.0",   # pour features_cache.parquet
+    "matplotlib>=3.8", # equity curves walk-forward
+]
+
+# ─── Combo pour développement ML complet ──────────────────────────────────────
+ml-dev = [
+    "oracle-v2[ml]",
+    "oracle-v2[dev]",
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+]
+
+# ─── Pytest ───────────────────────────────────────────────────────────────────
+
+[tool.pytest.ini_options]
+testpaths = ["oracle_v2/tests"]
+asyncio_mode = "auto"
+addopts = [
+    "--tb=short",
+    "--strict-markers",
+    "-v",
+]
+markers = [
+    "slow: tests lents (réseau, backtest)",
+    "live: tests nécessitant une connexion exchange réelle",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# ─── Coverage ─────────────────────────────────────────────────────────────────
+
+[tool.coverage.run]
+source = ["oracle_v2"]
+omit = [
+    "oracle_v2/tests/*",
+    "oracle_v2/vault/*",
+    "oracle_v2/ui/*",
+    "*/node_modules/*",
+]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 60
+
+# ─── Mypy ─────────────────────────────────────────────────────────────────────
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+exclude = [
+    "oracle_v2/tests/",
+    "oracle_v2/vault/",
+    "node_modules/",
+]
+
+# ─── Ruff (linting + formatting) ──────────────────────────────────────────────
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    "node_modules",
+    "oracle_v2/vault",
+    ".git",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+]
+ignore = [
+    "E501",   # line too long (géré par line-length)
+    "B008",   # function call in default argument
+    "N806",   # variable in function should be lowercase (ORACLE convention)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["oracle_v2"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

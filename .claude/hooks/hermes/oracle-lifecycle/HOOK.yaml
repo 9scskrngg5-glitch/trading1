@@ -1,0 +1,9 @@
+name: oracle-lifecycle
+description: Fire ORACLE v2 lifecycle events — tracks session and agent steps for the trading system
+events:
+  - gateway:startup
+  - session:start
+  - session:end
+  - agent:start
+  - agent:step
+  - agent:end
